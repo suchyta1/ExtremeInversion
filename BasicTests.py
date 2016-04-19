@@ -57,33 +57,29 @@ if __name__ == "__main__":
     m1, b = np.histogram(mmag, bins=bins, density=False)
     m2, b = np.histogram(mmag, bins=bins, density=False, weights=window)
 
+    #tfit = GMMFit( np.reshape(tmag,(len(tmag),1)) )
+    tfit = KDEFit( np.reshape(tmag,(len(tmag),1)) )
+    tsample = tfit.sample(n_samples=1000000)
+    tf, b = np.histogram(tsample.reshape((len(tsample),)), bins=bins, density=False)
+
+    tmfit = KDEFit(tm)
+    tmsample = tmfit.sample(n_samples=1000000)
+    tmf, bx, by = np.histogram2d(tmsample[:,0], tmsample[:,1], bins=[bins,bins])
+
     fig, ax = plt.subplots(1,1, tight_layout=True)
     ax.axvline(x=25, color='black', ls='dashed')
     ax.plot(cent, t, color='black')
     #ax.plot(cent, m1, color='red')
     #ax.plot(cent, m2, color='blue')
-
-    #tgmm = GMMFit( np.reshape(tmag,(len(tmag),1)) )
-    tgmm = KDEFit( np.reshape(tmag,(len(tmag),1)) )
-    tfit = tgmm.sample(n_samples=1000000)
-    tf, b = np.histogram(tfit, bins=bins, density=False)
     ax.plot(cent, tf, color='green')
 
     fig, ax = plt.subplots(1,1, tight_layout=True)
     h, bx, by = np.histogram2d(tmag, mmag, bins=[bins,bins])
-    im = ax.imshow(h.T, interpolation='nearest', origin='lower', extent=[bins[0],bins[-1],bins[0],bins[-1]])
+    im = ax.imshow(h.T, interpolation='nearest', origin='lower', extent=[bins[0],bins[-1],bins[0],bins[-1]], vmin=0, vmax=350)
     suchyta_utils.plot.AddColorbar(ax, im)
 
-    '''
-    div = make_axes_locatable(ax)
-    cax = div.append_axes("right", size="20%", pad=0.05)
-    cbar = plt.colorbar(im, cax=cax)
-    '''
-
-    #ax4.set_title('Title of ax4')
-    #im4 = ax4.imshow(tot2, norm=LogNorm(vmin=0.001, vmax=1), aspect='auto')
-    #divider4 = make_axes_locatable(ax4)
-    #cax4 = divider4.append_axes("right", size="20%", pad=0.05)
-    #cbar4 = plt.colorbar(im4, cax=cax4)
+    fig, ax = plt.subplots(1,1, tight_layout=True)
+    im = ax.imshow(tmf.T, interpolation='nearest', origin='lower', extent=[bins[0],bins[-1],bins[0],bins[-1]], vmin=0, vmax=350)
+    suchyta_utils.plot.AddColorbar(ax, im)
 
     plt.show()
