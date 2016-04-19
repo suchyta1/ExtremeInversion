@@ -34,6 +34,7 @@ if __name__ == "__main__":
     gamma = 0.3 * (tmag-start)/range
     #window = -2.0/np.pi * np.arctan( (tmag-30) )
     window = 1 - np.exp(tmag-25)
+    window[window < 0] = 0
     mmag = AnalyticallyTransformed1D(tmag, f='cauchy', params=np.array([bias,gamma]))
 
     bins = np.arange(15, 25.01, 0.05)
