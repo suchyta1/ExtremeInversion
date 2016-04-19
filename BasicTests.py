@@ -32,7 +32,8 @@ def GMMFit(data):
 
 def KDEFit(data, bandwidth='thumb'):
     if bandwidth=='thumb':
-        bandwidth = np.power( (len(data)*(data.shape[-1]+2.0)/4.0), -1.0/(data.shape[-1]+4.0) ) 
+        #bandwidth = np.power( (len(data)*(data.shape[-1]+2.0)/4.0), -1.0/(data.shape[-1]+4.0) )
+        bandwidth = np.power( (len(data)*(data.shape[-1]+2.0)/4.0), -1.0/(data.shape[-1]+4.0) ) * 0.5
     kde = neighbors.KernelDensity(bandwidth=bandwidth).fit(data)
     return kde
 
@@ -50,6 +51,7 @@ if __name__ == "__main__":
     window[window < 0] = 0
     mmag = AnalyticallyTransformed1D(tmag, f='cauchy', params=np.array([bias,gamma]))
     tm = np.dstack( (tmag,mmag) )[0]
+    det = (window > 0)
 
     bins = np.arange(15, 27.01, 0.05)
     cent = (bins[1:]+bins[:-1])/2.0
@@ -57,13 +59,14 @@ if __name__ == "__main__":
     m1, b = np.histogram(mmag, bins=bins, density=False)
     m2, b = np.histogram(mmag, bins=bins, density=False, weights=window)
 
-    #tfit = GMMFit( np.reshape(tmag,(len(tmag),1)) )
-    tfit = KDEFit( np.reshape(tmag,(len(tmag),1)) )
+    tfit = GMMFit( np.reshape(tmag,(len(tmag),1)) )
+    #tfit = KDEFit( np.reshape(tmag,(len(tmag),1)) )
     tsample = tfit.sample(n_samples=1000000)
     tf, b = np.histogram(tsample.reshape((len(tsample),)), bins=bins, density=False)
 
-    tmfit = KDEFit(tm)
-    tmsample = tmfit.sample(n_samples=1000000)
+    tmfit = GMMFit(tm[det])
+    #tmfit = KDEFit(tm[det])
+    tmsample = tmfit.sample(n_samples=np.sum(det))
     tmf, bx, by = np.histogram2d(tmsample[:,0], tmsample[:,1], bins=[bins,bins])
 
     fig, ax = plt.subplots(1,1, tight_layout=True)
@@ -74,7 +77,7 @@ if __name__ == "__main__":
     ax.plot(cent, tf, color='green')
 
     fig, ax = plt.subplots(1,1, tight_layout=True)
-    h, bx, by = np.histogram2d(tmag, mmag, bins=[bins,bins])
+    h, bx, by = np.histogram2d(tmag[det], mmag[det], bins=[bins,bins])
     im = ax.imshow(h.T, interpolation='nearest', origin='lower', extent=[bins[0],bins[-1],bins[0],bins[-1]], vmin=0, vmax=350)
     suchyta_utils.plot.AddColorbar(ax, im)
 
