@@ -28,17 +28,22 @@ if __name__ == "__main__":
     suchyta_utils.plot.Setup()
 
     start = 15
-    range = 10
+    range = 12
     tmag = np.random.power(2, size=1000000)*range + start
-    bias = 0.15 * (tmag-start)/range
+    bias = 0.08 * (tmag-start)/range
     gamma = 0.3 * (tmag-start)/range
+    #window = -2.0/np.pi * np.arctan( (tmag-30) )
+    window = 1 - np.exp(tmag-25)
     mmag = AnalyticallyTransformed1D(tmag, f='cauchy', params=np.array([bias,gamma]))
 
-    bins = np.arange(15, 24, 0.05)
+    bins = np.arange(15, 25.01, 0.05)
     cent = (bins[1:]+bins[:-1])/2.0
     t, b = np.histogram(tmag, bins=bins, density=False)
-    m, b = np.histogram(mmag, bins=bins, density=False)
+    m1, b = np.histogram(mmag, bins=bins, density=False)
+    m2, b = np.histogram(mmag, bins=bins, density=False, weights=window)
     fig, ax = plt.subplots(1,1, tight_layout=True)
     ax.plot(cent, t, color='black')
-    ax.plot(cent, m, color='red')
+    ax.plot(cent, m1, color='red')
+    ax.plot(cent, m2, color='blue')
+    ax.axvline(x=25, color='black', ls='dashed')
     plt.show()
