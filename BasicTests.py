@@ -28,8 +28,8 @@ def AnalyticallyTransformed1D(data, f=None, params=None):
 
 def GMMFit(data):
     #gmm = mixture.VBGMM(n_components=10).fit(data)
-    gmm = mixture.DPGMM(n_components=50, covariance_type='full').fit(data)
-    #gmm = mixture.GMM(n_components=50, covariance_type='full').fit(data)
+    #gmm = mixture.DPGMM(n_components=50, covariance_type='full').fit(data)
+    gmm = mixture.GMM(n_components=50, covariance_type='full').fit(data)
     return gmm
 
 def KDEFit(data, bandwidth='thumb'):
@@ -65,6 +65,15 @@ if __name__ == "__main__":
     m2, b = np.histogram(mmag, bins=bins, density=False, weights=window)
 
     tfit = GMMFit( np.reshape(tmag,(len(tmag),1)) )
+
+    tt = mixture.GMM(n_components=2, covariance_type='full')
+    tt.means_ = np.array( [[1,1], [3,3]] )
+    tt.covars_ = np.array( [ [[1,0],[0,1]], [[1,0],[0,1]]] )
+    tt.weights_ = np.array( [0.5,0.5] )
+    print tt.means_
+    print tt.sample(n_samples=10)
+    print tt.n_components
+
     #tfit = KDEFit( np.reshape(tmag,(len(tmag),1)) )
     tsample = tfit.sample(n_samples=nsample)
     tf, b = np.histogram(tsample.reshape((len(tsample),)), bins=bins, density=False)

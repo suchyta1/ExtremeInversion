@@ -69,7 +69,7 @@ class EEDC(object):
 
     
     def _Nij(self):
-        diff = np.reshape(data,(len(data),1,data.shape[-1])) - np.reshape(self.guesses[1,:],(1,len(self.guesses[1]),self.guesses[1].shape[-1]))
+        diff = np.reshape(self.data,(len(self.data),1,self.data.shape[-1])) - np.reshape(self.guesses[1,:],(1,len(self.guesses[1]),self.guesses[1].shape[-1]))
         cov_diff = np.einsum('...jk,...k',self.guess[2],diff)
         dcd = np.einsum('...k,...k',diff,cov_diff)
 
@@ -79,6 +79,17 @@ class EEDC(object):
             self.SetGuesses(guesses)
         if likelihood is not None:
             self.Likelihood = self.SetLikelihood(likelihood)
+
+
+
+def class GMM(object):
+
+    def __init__(self, amps, means, covs):
+        pass
+
+
+def SumOfTwoSquaredFormes(arr1, arr2):
+    pass
 
 
 if __name__ == "__main__":
