@@ -10,6 +10,9 @@ import numpy.lib.recfunctions as rec
 import sklearn.mixture as mixture
 import scipy.linalg
 
+import matplotlib.pyplot as plt
+import suchyta_utils.plot as esplt
+
 
 class GMMException(Exception):
     def __init__(self, msg):
@@ -19,9 +22,18 @@ class GMMException(Exception):
         return repr(self.msg)
 
 
-class MinimalGMM(Object):
+class MinimalGMM(object):
     def __init__(self):
         self.n_components = -1
+
+def TestGMM(mean=0, cov=1.0):
+    #gmm = MinimalGMM()
+    gmm = mixture.GMM(n_components=1, covariance_type='full')
+    gmm.means_ = np.ones( (1,1) )*mean
+    gmm.covars_ = np.array( [np.identity(1)*cov] )
+    gmm.icovars_ = 1.0/gmm.covars_
+    gmm.weights_ = np.ones( (1,) )
+    return gmm
 
 
 def NoneArrays(gmm):
@@ -31,7 +43,7 @@ def NoneArrays(gmm):
     gmm.icovars_ = None
 
 
-def class GMM(object):
+class GMM(object):
 
     def _log(self):
         rootlog = logging.getLogger()
@@ -84,7 +96,7 @@ def class GMM(object):
         self.gmm.NoneArrays()
         
         if (covars is not None) and (icovars is not None):
-            raise Exception('only allowed to set one of covars or icovars')
+            raise GMMException('only allowed to set one of covars or icovars')
         if weights is not None:
             self.SetWeights(w)
         if means is not None:
@@ -97,14 +109,73 @@ def class GMM(object):
     def __mul__(self, other):
         pass
 
+def _CheckD(gmm1, gmm2):
+    if (gmm1.means_.shape[-1]!=gmm2.means_.shape[-1]):
+        raise GMMException('given GMMs are not the same dimensionality')
 
-def SumOfTwoSquaredFormes(gmm1, gmm2):
-    icovars = gmm1._icovars.reshape((gmm1.icovars_.shape[0],1,gmm1.icovars_.shape[1],gmm1.icovars_.shape[2])) + gmm2._icovars.reshape((1,gmm2.icovars_.shape[0],gmm2.icovars_.shape[1],gmm2.icovars_.shape[2])) 
 
-    icov = scipy.linalg.block_diag( *np.reshape(icovars,(icovars.shape[0]*icovars.shape[1],icovars.shape[2],icovars.shape[3])) )
+def _BlockIndexes(d12, d3):
+    bsize = d3*d3
+    dstart = np.arange(d12)
+    start = np.repeat( dstart*d3,  bsize)
+    start = start.reshape( (start.shape[0]/bsize, d3, d3) )
+
+    rowoffset = np.repeat(np.arange(d3), d3).reshape(1,d3,d3)
+    row = start + rowoffset
+    coloffset = np.tile(np.arange(d3), d3).reshape(1,d3,d3)
+    col = start + coloffset
+    return [row, col]
+
+
+def SumOfTwoSquaredForms(gmm1, gmm2):
+    _CheckD(gmm1, gmm2)
+    ncomps1 = gmm1.means_.shape[0]
+    ncomps2 = gmm2.means_.shape[0]
+    ncomps12 = ncomps1 * ncomps2
+    dim = gmm1.means_.shape[-1]
+
+    icovars = gmm1.icovars_.reshape((ncomps1,1,dim,dim)) + gmm2.icovars_.reshape((1,ncomps2,dim,dim)) 
+    icov = scipy.linalg.block_diag( *icovars.reshape((ncomps12,dim,dim)) )
     cov = np.linalg.inv(icov)
-    elems = np.arange(icovars.shape[0]*icovars.shape[1])
-    covs = np.zeros( (icovars.shape[0],icovars.shape[1],icovars.shape[2],icovars.shape[3]) )
+    row, col = _BlockIndexes(ncomps12,dim)
+    covars = cov[ row, col ]
+    covars = covars.reshape( (ncomps1,ncomps2,dim,dim) )
     
-    ix = np.ix_()
-    covs = 
+    m1 = np.dot(scipy.linalg.block_diag(*gmm1.icovars_), gmm1.means_.flatten()).reshape((ncomps1,1,dim))
+    m2 = np.dot(scipy.linalg.block_diag(*gmm2.icovars_), gmm2.means_.flatten()).reshape((1,ncomps2,dim))
+    m = m1 + m2
+    mean = np.dot(cov, m.reshape(ncomps12,dim))
+    means = mean.reshape((ncomps1,ncomps2,dim))
+
+    mm = mean * np.dot(cov,mean)
+    mm = mm.reshape(ncomps1, ncomps2, dim)
+    mm = np.sum(mm, axis=-1)
+    c1 = np.dot(scipy.linalg.block_diag(*gmm1.icovars_),gmm1.means_.flatten()).reshape(ncomps1,dim)
+    c1 = np.sum(gmm1.means_*c1, axis=-1)
+    c1 = c1.reshape(c1.shape[0],1)
+    c2 = np.dot(scipy.linalg.block_diag(*gmm2.icovars_),gmm2.means_.flatten()).reshape(ncomps2,dim)
+    n2 = np.sum(gmm2.means_*c2, axis=-1)
+    c2 = c2.reshape(1,c1.shape[0])
+    cc = c1 + c2
+    consts = 0.5 * (mm - cc)
+
+    return [consts, means, covars, icovars]
+
+
+if __name__=='__main__':
+    gmm1 = TestGMM(cov=1.0) 
+    gmm2 = TestGMM(mean=2, cov=2.0)
+    sosf = SumOfTwoSquaredForms(gmm1, gmm2)
+    print sosf
+
+    s1 = gmm1.sample(n_samples=int(1e4))
+    s2 = gmm2.sample(n_samples=int(1e4))
+    s = s1*s2
+    
+    bins = np.arange(-2, 3.01, 0.05)
+    cent = (bins[1:]+bins[:-1])/2.0
+    h, b = np.histogram(s, bins, density=True)
+
+    esplt.Setup()
+    plt.plot(cent, h, color='black')
+    plt.show()
