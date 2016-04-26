@@ -168,14 +168,27 @@ if __name__=='__main__':
     sosf = SumOfTwoSquaredForms(gmm1, gmm2)
     print sosf
 
-    s1 = gmm1.sample(n_samples=int(1e4))
-    s2 = gmm2.sample(n_samples=int(1e4))
-    s = s1*s2
+    gmm4 = mixture.GMM(n_components=1, covariance_type='full')
+    gmm4.means_ = sosf[1][0]
+    gmm4.covars_ = sosf[2][0]
+    #gmm4.icovars_ = sosf[3]
+    gmm4.weights_ = np.array([1])
+
+    s1 = gmm1.sample(n_samples=int(1e6))
+    s2 = gmm2.sample(n_samples=int(1e6))
+    s3 = s1*s2
+    s4 = gmm4.sample(n_samples=int(1e6)) 
     
-    bins = np.arange(-2, 3.01, 0.05)
+    bins = np.arange(-4, 6.01, 0.1)
     cent = (bins[1:]+bins[:-1])/2.0
-    h, b = np.histogram(s, bins, density=True)
+    h1, b = np.histogram(s1, bins, density=True)
+    h2, b = np.histogram(s2, bins, density=True)
+    h3, b = np.histogram(s3, bins, density=True)
+    h4, b = np.histogram(s4, bins, density=True)
 
     esplt.Setup()
-    plt.plot(cent, h, color='black')
+    plt.plot(cent, h1, color='blue')
+    plt.plot(cent, h2, color='red')
+    plt.plot(cent, h3, color='green')
+    plt.plot(cent, h4, color='black')
     plt.show()
