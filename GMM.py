@@ -4,6 +4,9 @@ import sys
 import os
 import time
 import datetime
+import logging
+import socket
+import traceback
 
 import numpy as np
 import numpy.lib.recfunctions as rec
@@ -16,7 +19,7 @@ import suchyta_utils.plot as esplt
 
 class GMMException(Exception):
     def __init__(self, msg):
-        self.msg = msg
+        self.msg = msg + traceback.format_exc()
 
     def __str__(self):
         return repr(self.msg)
@@ -70,21 +73,27 @@ class GMM(object):
         self.gmm.means_ = m
 
     def _Inv(self, k1, inv):
+        '''
         self.gmm.__dict__[k1] = np.zeros(inv.shape)
         for i in range(len(self.gmm.__dict__[k1])):
             self.gmm.__dict__[k1][i] = np.linalg.inv(inv[i])
+        '''
+        m = scipy.linalg.block_diag(*inv)
+        row, col = _BlockIndexes(self.gmm.means_.shape[0],self.gmm.means_.shape[1])
+        self.gmm.__dict__[k1] = m[row,col]
+
 
     def SetCovars(self, c, doinv=True):
         c = _CheckArray(c, 3, 'covars')
         self.gmm.covars_ = c
         if doinv:
-            self.Inv('icovars_', self.gmm.covars_)
+            self._Inv('icovars_', self.gmm.covars_)
 
     def SetICovars(self, i, docov=True):
         i = _CheckArray(i, 3, 'icovars')
         self.gmm.icovars_ = i
         if docov:
-            self.Inv('covars_', self.gmm.icovars_)
+            self._Inv('covars_', self.gmm.icovars_)
 
 
     def __init__(self, weights=None, means=None, covars=None, icovars=None, sklearnfit={}):
@@ -155,7 +164,7 @@ def SumOfTwoSquaredForms(gmm1, gmm2):
     c1 = c1.reshape(c1.shape[0],1)
     c2 = np.dot(scipy.linalg.block_diag(*gmm2.icovars_),gmm2.means_.flatten()).reshape(ncomps2,dim)
     n2 = np.sum(gmm2.means_*c2, axis=-1)
-    c2 = c2.reshape(1,c1.shape[0])
+    c2 = c2.reshape(1,c2.shape[0])
     cc = c1 + c2
     consts = 0.5 * (mm - cc)
 
@@ -163,10 +172,37 @@ def SumOfTwoSquaredForms(gmm1, gmm2):
 
 
 if __name__=='__main__':
-    gmm1 = TestGMM(cov=1.0) 
-    gmm2 = TestGMM(mean=2, cov=2.0)
+    rootlog = logging.getLogger()
+    rootlog.setLevel(logging.NOTSET)
+
+    t = int(time.time()) + datetime.datetime.now().microsecond
+    log = logging.getLogger('id-%i'%(t))
+    log.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(hostname)s -%(asctime)s -  %(levelname)s - %(message)s')
+    sh = logging.StreamHandler()
+    sh.setFormatter(formatter)
+    sh.setLevel(logging.DEBUG)
+    log.addHandler(sh)
+    extra = {'hostname': 'host=%s'%(socket.gethostname())}
+    log = logging.LoggerAdapter(log, extra)
+
+    try:
+        1/0
+    except:
+        #print sys.exc_info()
+        #log.exception('Test')
+        print traceback.format_exc(file=log)
+        raise GMMException('test\n')
+        #raise Exception('test')
+        #sys.exit(1)
+        #log.error('test', exc_info=sys.exc_info)
+        #raise
+
+    gmm1 = TestGMM(cov=0.05) 
+    gmm2 = TestGMM(mean=2, cov=0.05)
     sosf = SumOfTwoSquaredForms(gmm1, gmm2)
     print sosf
+
 
     gmm4 = mixture.GMM(n_components=1, covariance_type='full')
     gmm4.means_ = sosf[1][0]
